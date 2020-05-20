@@ -1,0 +1,16 @@
+version: '3'
+services:
+  pbsenv:
+    environment:
+      - bootstrap.memory_lock=true
+    build: .
+    image: centos_pbs_devenv
+    hostname: pbs
+    container_name: devenv
+    volumes:
+      - /home/subhas/data/work/code/:/code:cached
+    working_dir: /code
+    privileged: true
+    tty: true
+    stdin_open: true
+    
