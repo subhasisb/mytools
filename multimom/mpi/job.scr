@@ -1,0 +1,8 @@
+#PBS -l select=vnode=blrlap465
+
+/usr/local/pbs/bin/pbs_attach -j $PBS_JOBID /bin/sleep 30
+
+
+
+/usr/local/pbs/bin/pbs_tmrsh blrlap465.pbspro.com /usr/local/pbs/bin/pbs_attach /bin/sleep 30
+

@@ -1,0 +1,128 @@
+#!/usr/bin/sh
+
+if [ $# -lt 1 ]; then
+	echo "usage: $0 <moms> [thrds]"
+	exit 1
+fi
+
+if [ $# -eq 2 ]; then
+	thrds=$2
+fi
+
+last=$1
+dokill=0
+loop=1
+
+. /etc/pbs.conf
+
+ulimit -n 10000
+ulimit -c unlimited
+
+pbs_home=$PBS_HOME
+pbs_newhome=`dirname $pbs_home`
+if [ -z "$pbs_newhome" ]; then 
+	echo "Could not detect new home"
+	exit 1
+fi
+
+if [ ! -d "$pbs_newhome" ]; then 
+	echo "$pbs_newhome is not a directory"
+	exit 1
+fi
+
+if [ "$pbs_newhome" = "/" ]; then
+	echo "pbs_newhome resolves to /. Cannot work"
+	exit 1
+fi
+
+echo Current PBS_HOME=$pbs_home
+echo Homes for new moms=$pbs_newhome
+
+
+check_nodes()
+{
+	old_cnt=0	
+	while :
+	do
+		cnt=`pbsnodes -av | grep free | wc -l`
+		if [ $cnt -ne $old_cnt ]; then
+			echo "Nodes up $cnt"
+			old_cnt=$cnt
+		fi
+		if [ $cnt -eq $last ]; then
+			break
+		fi
+		sleep 1
+	done
+}
+
+while :
+do 
+	GLOBAL_ITER=$loop
+	export GLOBAL_ITER
+
+	echo "`date`: Iteration: $loop"
+	echo "==============================================="
+
+
+	kpid=`cat ${PBS_HOME}/server_priv/comm.lock`
+	if [ -z "$kpid" ]; then
+		echo "Comm pid not found - crashed?"
+		exit 1
+	fi
+	ps $kpid > /dev/null 2>&1
+	if [ $? -ne 0 ]; then
+		echo "Comm pid not found - crashed?"
+		exit 1
+	fi
+	echo "Pid of comm = $kpid"
+
+	echo "kILLING PBS_COMM WITH PID = $kpid"
+	kill -9 $kpid > /dev/null 2>&1
+	if [ $? -eq 0 ]; then
+		while :
+		do
+			kpid=`cat ${PBS_HOME}/server_priv/comm.lock`
+			ps $kpid > /dev/null 2>&1
+			if [ $? -ne 0 ]; then
+				break
+			fi
+			echo "Waiting for comm to exit"
+			sleep 1
+		done
+
+	else
+		echo "Failed to kill pbs_comm"
+	fi
+
+	ulimit -c unlimited
+	ulimit -n 30000
+
+	if [ ! -z "$thrds" ]; then
+		#valgrind --log-file=comm.vallog.$$ pbs_comm -t $thrds > comm.out.$$ 2>&1 &
+		pbs_comm -t $thrds > comm.out.$$ 2>&1 &
+	else
+		pbs_comm > comm.out 2>&1 &
+	fi
+	while :
+	do
+		kpid=`cat ${PBS_HOME}/server_priv/comm.lock`
+		ps $kpid > /dev/null 2>&1
+		if [ $? -eq 0 ]; then
+			echo "New comm pid=$kpid"
+			break
+		fi
+		echo "Waiting for comm.."
+		sleep 1
+	done
+
+	STARTTIME=$(date +%s)
+	check_nodes
+	ENDTIME=$(date +%s)
+	echo "$last nodes up in $(($ENDTIME - $STARTTIME)) seconds"
+	echo ""
+	echo ""
+
+	
+	loop=`expr $loop + 1`
+done

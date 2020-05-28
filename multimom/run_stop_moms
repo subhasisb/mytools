@@ -1,0 +1,115 @@
+#!/usr/bin/sh
+
+if [ $# -lt 1 ]; then
+	echo "usage: $0 <num moms> <dokill> [thrds]"
+	exit 1
+fi
+
+if [ $# -eq 3 ]; then
+	thrds=$3
+fi
+
+last=$1
+dokill=0
+if [ $# -ge 2 ]; then
+	dokill=$2
+	echo "Running in kill comm mode"
+fi
+loop=1
+
+. /etc/pbs.conf
+
+ulimit -n 10000
+ulimit -c unlimited
+
+pbs_home=$PBS_HOME
+pbs_newhome=`dirname $pbs_home`
+if [ -z "$pbs_newhome" ]; then 
+	echo "Could not detect new home"
+	exit 1
+fi
+
+if [ ! -d "$pbs_newhome" ]; then 
+	echo "$pbs_newhome is not a directory"
+	exit 1
+fi
+
+if [ "$pbs_newhome" = "/" ]; then
+	echo "pbs_newhome resolves to /. Cannot work"
+	exit 1
+fi
+
+echo Current PBS_HOME=$pbs_home
+echo Homes for new moms=$pbs_newhome
+
+
+check_nodes()
+{
+	old_cnt=0	
+	while :
+	do
+		cnt=`pbsnodes -av | grep free | wc -l`
+		if [ $cnt -ne $old_cnt ]; then
+			echo "Nodes up $cnt"
+			old_cnt=$cnt
+		fi
+		if [ $cnt -eq $last ]; then
+			break
+		fi
+		sleep 1
+	done
+}
+
+while :
+do 
+	GLOBAL_ITER=$loop
+	export GLOBAL_ITER
+
+	echo "`date`: Iteration: $loop"
+	echo "==============================================="
+
+	if [ $GLOBAL_ITER -eq 1 ]; then
+		echo "Deleting moms..."
+		./stop_all_moms
+		echo ""
+	else
+		# just kill the moms
+		pids=`ps -ef | grep pbs_mom | grep -v pbs_comm | grep -v grep | awk '{print $2}'`
+		kill -9 $pids > /dev/null 2>&1
+
+		pids=`echo $pids | tr -s "\n" " "`
+		echo "Killing pids=$pids"
+		sleep 1
+	fi
+
+	if [ $dokill -eq 1 ]; then
+		kpid=`cat ${PBS_HOME}/server_priv/comm.lock`
+		if [ -z "$kpid" ]; then
+			echo "Comm pid not found - crashed?"
+			exit 1
+		fi
+		ps $kpid > /dev/null 2>&1
+		if [ $? -ne 0 ]; then
+			echo "Comm pid not found - crashed?"
+			exit 1
+		fi
+		
+		echo "Pid of comm = $kpid"
+	else
+		kpid=0
+	fi
+
+	sleep 3
+
+	./run_moms_kill $kpid 1 $last 19000 $thrds
+
+	STARTTIME=$(date +%s)
+	check_nodes
+	ENDTIME=$(date +%s)
+	echo "$last nodes up in $(($ENDTIME - $STARTTIME)) seconds"
+	echo ""
+	echo ""
+
+	
+	loop=`expr $loop + 1`
+done
