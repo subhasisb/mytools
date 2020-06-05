@@ -8,8 +8,8 @@ services:
     hostname: pbs
     container_name: devenv
     volumes:
-      - ~/work/code/:/code:cached
-    working_dir: /code
+      - ~/work:/work:cached
+    working_dir: /work/forks/openpbs
     privileged: true
     tty: true
     stdin_open: true
