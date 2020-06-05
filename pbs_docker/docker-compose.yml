@@ -8,7 +8,7 @@ services:
     hostname: pbs
     container_name: devenv
     volumes:
-      - /home/subhas/data/work/code/:/code:cached
+      - ~/work/code/:/code:cached
     working_dir: /code
     privileged: true
     tty: true
