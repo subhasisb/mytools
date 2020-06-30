@@ -53,8 +53,7 @@ do
 	echo "PBS_MOM_SERVICE_PORT=$port" >> env_file
         echo "PBS_MANAGER_SERVICE_PORT=`expr $port + 1`" >> env_file
 
-	docker run --net=host -d --rm centos_mom bash -c "rm -rf $PBS_HOME; service pbs start "
-
+	docker run --env-file env_file --net=host -d --rm -v /opt/pbs:/opt/pbs entos:7 bash -c "service pbs start"
 	
 	port=`expr $port + 5`
 	n=`expr $n + 1`
