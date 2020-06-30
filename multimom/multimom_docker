@@ -1,0 +1,63 @@
+#!/usr/bin/bash
+
+. ${PBS_CONF_FILE:-/etc/pbs.conf}
+
+if [ $# -lt 2 ]
+then
+	echo "Usage is: $0 <num> <first port no.>"
+	exit 
+fi
+
+echo "Stopping moms and deleting all nodes"
+#stop everything and remove all nodes
+pkill pbs_mom
+sleep 1
+pkill -9 pbs_mom
+
+for node in `pbsnodes -av | grep ^mom`
+do
+	$PBS_EXEC/bin/qmgr -c "d n $node"
+done
+echo "Deleted all nodes"
+
+num=$1
+port=$2
+mom_name=`hostname`
+
+ulimit -n 10000
+ulimit -c unlimited
+
+echo "Moms to be created are from $n to $l with port starting from $port"
+for n in {1..$num}
+do
+	#echo "Adding node mom$n"
+	$PBS_EXEC/bin/qmgr -c "c n mom$n mom=$mom_name, port=$port"
+
+	port=`expr $port + 5`
+	n=`expr $n + 1`
+done
+
+pbs_home=$PBS_HOME
+
+echo editing pbs.conf file and mom_priv/config
+
+for n in {1..$num}
+do
+	echo starting mom $n
+
+	> env_file
+	echo "PBS_START_SERVER=0" >> env_file
+	echo "PBS_START_SCHED=0" >> env_file
+	echo "PBS_START_COMM=0" >> env_file
+	echo "PBS_START_MOM=1" >> env_file
+	echo "PBS_MOM_SERVICE_PORT=$port" >> env_file
+        echo "PBS_MANAGER_SERVICE_PORT=`expr $port + 1`" >> env_file
+
+	docker run --net=host -d --rm centos_mom bash -c "rm -rf $PBS_HOME; service pbs start "
+
+	
+	port=`expr $port + 5`
+	n=`expr $n + 1`
+done
+
+echo "Done"
