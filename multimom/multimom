@@ -104,7 +104,9 @@ n=1
 while [ $n -le $l ]
 do
 	echo starting mom $n
-	PBS_CONF_FILE=$pbs_newhome/mom$n/pbs.conf $PBS_EXEC/sbin/pbs_mom
+	#PBS_CONF_FILE=$pbs_newhome/mom$n/pbs.conf valgrind --tool=helgrind --log-file=mom$n.log  --child-silent-after-fork=yes $PBS_EXEC/sbin/pbs_mom -N &
+	#PBS_CONF_FILE=$pbs_newhome/mom$n/pbs.conf valgrind --log-file=mom$n.log --leak-check=full --child-silent-after-fork=yes $PBS_EXEC/sbin/pbs_mom -N &
+	PBS_CONF_FILE=$pbs_newhome/mom$n/pbs.conf $PBS_EXEC/sbin/pbs_mom -N >mom$n.out 2>&1 &
 	n=`expr $n + 1`
 done
 

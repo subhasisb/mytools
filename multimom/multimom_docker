@@ -1,62 +1,63 @@
-#!/usr/bin/bash
+#!/bin/bash
 
-. ${PBS_CONF_FILE:-/etc/pbs.conf}
+function usage() {
+	echo "syntax: $0 <create> [jobuser] [num-moms] [num-cpus-per-mom]"
+	echo "syntax: $0 <remove>"
+}
 
-if [ $# -lt 2 ]
-then
-	echo "Usage is: $0 <num> <first port no.>"
-	exit 
+if [ $# -lt 1 ]; then
+	usage
+	exit 1
 fi
 
-echo "Stopping moms and deleting all nodes"
-#stop everything and remove all nodes
-pkill pbs_mom
-sleep 1
-pkill -9 pbs_mom
+if [ "$1" = "create" ]; then
+	if [ $# -lt 4 ]; then
+		usage
+		exit 1
+	fi
+	jobuser=$2
+	num=$3
+	cpus=$4
+	echo "Creating $num containers/moms each with $cpus cores and adding user $jobuser"
+	echo "================================================================================="
+elif [ "$1" = "remove" ]; then
+	if [ $# -ne 1 ]; then
+		usage
+		exit 1
+	fi
+else
+	usage
+	exit 1
+fi
 
-for node in `pbsnodes -av | grep ^mom`
+
+_shost=$(hostname -s)
+_sm=$(pwd)/start_mom
+
+containers=`docker ps -a | grep pbsmom | awk '{print $1}'`
+if [ ! -z "${containers}" ]; then
+	echo "Removing existing containers..."
+	docker stop `docker ps -a | grep pbsmom | awk '{print $1}'`
+	docker rm `docker ps -a | grep pbsmom | awk '{print $1}'`
+fi
+
+echo "Deleting existing nodes..."
+/opt/pbs/bin/qmgr -c "d n @default" > /dev/null 2>&1
+
+if [ "$1" = "remove" ]; then
+	echo "Done"
+	exit 0
+fi
+
+docker build . --build-arg JOBUSER=$jobuser -t pbs:mom
+
+for i in $(seq 1 1 $num)
 do
-	$PBS_EXEC/bin/qmgr -c "d n $node"
+	_port=$((18000 + (i * 2)))
+	echo "Creating mom container at ${_shost} ${_port} with name pbsmom_$i"
+	docker run -dit --privileged --net=host -v /opt/pbs:/opt/pbs -v ${_sm}:/start_mom --name pbsmom_$i --entrypoint /start_mom pbs:mom ${_shost} ${_port}
+	echo ""
+	/opt/pbs/bin/qmgr -c "c n mom-${i} mom=${_shost},port=${_port}"
+	/opt/pbs/bin/qmgr -c "s n mom-${i} resources_available.ncpus = $cpus"
 done
-echo "Deleted all nodes"
-
-num=$1
-port=$2
-mom_name=`hostname`
-
-ulimit -n 10000
-ulimit -c unlimited
-
-echo "Moms to be created are from $n to $l with port starting from $port"
-for n in {1..$num}
-do
-	#echo "Adding node mom$n"
-	$PBS_EXEC/bin/qmgr -c "c n mom$n mom=$mom_name, port=$port"
-
-	port=`expr $port + 5`
-	n=`expr $n + 1`
-done
-
-pbs_home=$PBS_HOME
-
-echo editing pbs.conf file and mom_priv/config
-
-for n in {1..$num}
-do
-	echo starting mom $n
-
-	> env_file
-	echo "PBS_START_SERVER=0" >> env_file
-	echo "PBS_START_SCHED=0" >> env_file
-	echo "PBS_START_COMM=0" >> env_file
-	echo "PBS_START_MOM=1" >> env_file
-	echo "PBS_MOM_SERVICE_PORT=$port" >> env_file
-        echo "PBS_MANAGER_SERVICE_PORT=`expr $port + 1`" >> env_file
-
-	docker run --env-file env_file --net=host -d --rm -v /opt/pbs:/opt/pbs entos:7 bash -c "service pbs start"
-	
-	port=`expr $port + 5`
-	n=`expr $n + 1`
-done
-
 echo "Done"

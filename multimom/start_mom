@@ -1,0 +1,10 @@
+#!/bin/bash
+
+_server=$1
+_port=$2
+
+PBS_SERVER=${_server} /opt/pbs/libexec/pbs_postinstall execution
+echo "PBS_MOM_SERVICE_PORT=${_port}" >> /etc/pbs.conf
+echo "PBS_MANAGER_SERVICE_PORT=$((_port + 1))" >> /etc/pbs.conf
+/etc/init.d/pbs start
+exec /bin/bash
