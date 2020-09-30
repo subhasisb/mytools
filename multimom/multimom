@@ -1,39 +1,55 @@
-#!/usr/bin/sh
+#!/bin/bash
 
-if [ $# -lt 2 ]
-then
-	echo "Usage is: $0 <end> <port no.> [mom-name]"
-	exit 
-fi
-. /etc/pbs.conf
+. ${PBS_CONF_FILE:-/etc/pbs.conf}
 
-l=$1
-n=1
-port=$2
-mom_name=`hostname`
-if [ $# -eq 3 ]; then
-	mom_name=$3
+function usage() {
+	echo "syntax: $0 <create> [jobuser] [num-moms] [num-cpus-per-mom]"
+	echo "syntax: $0 <createcon> [jobuser] [num-moms] [num-cpus-per-mom]"
+	echo "syntax: $0 <remove>"
+}
+
+if [ $# -lt 1 ]; then
+	usage
+	exit 1
 fi
 
-. /etc/pbs.conf
+docker_present=0
+docker --version > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+	docker_present=1
+fi
 
-ulimit -n 10000
-ulimit -c unlimited
-
-echo "Moms required to be created are from $n to $l with port starting from $port"
-
-start_time=`date +%s`
-while [ $n -le $l ]
-do
-	#echo "Adding node mom$n"
-	if [ ! -z "$mom_name" ]; then
-		$PBS_EXEC/bin/qmgr -c "c n mom$n mom=$mom_name, port=$port"
-	else
-		$PBS_EXEC/bin/qmgr -c "c n mom$n mom=mom$n, port=$port"
+if [ "$1" = "create" -o  "$1" = "createcon" ]; then
+	if [ $# -lt 4 ]; then
+		usage
+		exit 1
 	fi
-	port=`expr $port + 5`
-	n=`expr $n + 1`
-done
+	jobuser=$2
+	num=$3
+	cpus=$4
+	echo "Creating $num containers/moms each with $cpus cores and adding user $jobuser"
+	echo "====================================================================="
+elif [ "$1" = "remove" ]; then
+	if [ $# -ne 1 ]; then
+		usage
+		exit 1
+	fi
+else
+	usage
+	exit 1
+fi
+
+if [ "$1" = "create" ]; then
+	echo "Running in NON-CONTAINER mode"
+	cont=0
+elif [ "$1" = "createcon" ]; then
+	echo "Running in CONTAINER mode"
+	cont=1
+	if [ $docker_present -eq 0 ]; then
+		echo "Docker not installed!! Exiting..."
+		exit 1
+	fi
+fi
 
 pbs_home=$PBS_HOME
 pbs_newhome=`dirname $pbs_home`
@@ -52,62 +68,63 @@ if [ "$pbs_newhome" = "/" ]; then
 	exit 1
 fi
 
-echo Current PBS_HOME=$pbs_home
-echo Homes for new moms=$pbs_newhome
+mom_name=`hostname`
+_shost=$(hostname -s)
+_sm=$(pwd)/start_mom
 
-n=1
-
-echo creating mom directories
-while [ $n -le $l ]
-do
-	mkdir $pbs_newhome/mom$n > /dev/null 2>&1
-	cp -r -p $pbs_home/aux $pbs_newhome/mom$n
-	cp -r -p $pbs_home/checkpoint $pbs_newhome/mom$n
-	cp -r -p $pbs_home/mom_logs $pbs_newhome/mom$n
-	cp -r -p $pbs_home/pbs_environment $pbs_newhome/mom$n
-	cp -r -p $pbs_home/mom_priv $pbs_newhome/mom$n
-	cp -r -p $pbs_home/spool $pbs_newhome/mom$n
-	cat /etc/pbs.conf > $pbs_newhome/mom$n/pbs.conf
-	n=`expr $n + 1`
-done
-
-n=1
-port=$2
-echo editing pbs.conf file and mom_priv/config
-while [ $n -le $l ]
-do
-	mom_home=$pbs_newhome/mom$n
-	conf_file=$mom_home/pbs.conf
-	mom_conf=$mom_home/mom_priv/config
-
-	if [ ! -f "$conf_file" ]; then
-		echo "File $conf_file missing"
-		exit 1
+if [ $docker_present -eq 1 ]; then
+	containers=`docker ps -a | grep pbsmom | awk '{print $1}'` 
+	if [ ! -z "${containers}" ]; then
+		echo "Removing existing containers..."
+		docker stop `docker ps -a | grep pbsmom | awk '{print $1}'`
+		docker rm `docker ps -a | grep pbsmom | awk '{print $1}'`
 	fi
+fi
+rm -rf $pbs_newhome/mom*
+pkill pbs_mom
 
-	if [ ! -f "$mom_conf" ]; then
-		echo "File $mom_conf missing"
-		exit 1
-	fi
 
-	echo "PBS_MOM_SERVICE_PORT=$port" >> $conf_file
-	echo "PBS_MANAGER_SERVICE_PORT=`expr $port + 1`" >> $conf_file
-	echo "PBS_HOME=$mom_home" >> $conf_file
+echo "Deleting existing nodes..."
+/opt/pbs/bin/qmgr -c "d n @default" > /dev/null 2>&1
 
-	chown -R root ${mom_home}
+if [ "$1" = "remove" ]; then
+	echo "Done"
+	exit 0
+fi
 
-	port=`expr $port + 5`
-	n=`expr $n + 1`
-done
+if [ $cont -eq 1 ]; then
+	docker build . --build-arg JOBUSER=$jobuser -t pbs:mom
+fi
 
-n=1
-while [ $n -le $l ]
+for i in $(seq 1 1 $num)
 do
-	echo starting mom $n
-	#PBS_CONF_FILE=$pbs_newhome/mom$n/pbs.conf valgrind --tool=helgrind --log-file=mom$n.log  --child-silent-after-fork=yes $PBS_EXEC/sbin/pbs_mom -N &
-	#PBS_CONF_FILE=$pbs_newhome/mom$n/pbs.conf valgrind --log-file=mom$n.log --leak-check=full --child-silent-after-fork=yes $PBS_EXEC/sbin/pbs_mom -N &
-	PBS_CONF_FILE=$pbs_newhome/mom$n/pbs.conf $PBS_EXEC/sbin/pbs_mom -N >mom$n.out 2>&1 &
-	n=`expr $n + 1`
-done
+	_port=$((18000 + (i * 2)))
+	if [ $cont -eq 1 ]; then
+		echo "Creating container at ${_shost} ${_port} with name pbsmom_$i"
+		docker run -dit --privileged --net=host -v /opt/pbs:/opt/pbs -v ${_sm}:/start_mom --name pbsmom_$i --entrypoint /start_mom pbs:mom ${_shost} ${_port}
+		/opt/pbs/bin/qmgr -c "c n mom-${i} mom=${_shost},port=${_port}"
+	else
+		mom_home=$pbs_newhome/mom$i
+		conf_file=$mom_home/pbs.conf
+		mom_conf=$mom_home/mom_priv/config
 
+		echo "Creating mom_home $pbs_newhome/mom$i"
+		mkdir $mom_home > /dev/null 2>&1
+		cp -r -p $pbs_home/aux $mom_home
+		cp -r -p $pbs_home/checkpoint $mom_home
+		cp -r -p $pbs_home/mom_logs $mom_home
+		cp -r -p $pbs_home/pbs_environment $mom_home
+		cp -r -p $pbs_home/mom_priv $mom_home
+		cp -r -p $pbs_home/spool $mom_home
+		cat /etc/pbs.conf > $conf_file
+
+		echo "PBS_MOM_SERVICE_PORT=${_port}" >> $conf_file
+		echo "PBS_MANAGER_SERVICE_PORT=`expr ${_port} + 1`" >> $conf_file
+		echo "PBS_HOME=$mom_home" >> $conf_file
+		${PBS_EXEC}/bin/qmgr -c "c n mom-${i} mom=${mom_name},port=${_port}"
+		PBS_CONF_FILE=$conf_file ${PBS_EXEC}/sbin/pbs_mom -N > /tmp/mom$i.out 2>&1 &
+	fi
+	echo ""
+	/opt/pbs/bin/qmgr -c "s n mom-${i} resources_available.ncpus = $cpus"
+done
 echo "Done"
