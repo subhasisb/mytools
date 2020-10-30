@@ -10,9 +10,13 @@ RUN yum install -y gcc make rpm-build libtool hwloc-devel \
       autoconf automake
 
 RUN yum install -y expat libedit postgresql-server postgresql-contrib python3 \
-      sendmail sudo tcl tk libical
+      sendmail sudo tcl tk libical zsh
 
 RUN yum install -y valgrind gdb strace
+RUN chsh -s $(which zsh)
+RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+RUN sed 's/ZSH_THEME="robbyrussell"/ZSH_THEME="agnoster"/g ~/.zshrc > /tmp/out; mv /tmp/out ~/.zshrc
+
 
 # install git2
 RUN yum remove git*
