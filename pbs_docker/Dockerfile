@@ -3,7 +3,7 @@ LABEL maintainer="subhasis.bhattacharya@gmail.com"
 LABEL description="PBS Professional Open Source dev work env"
 
 # Get all the prerequisites, third parties etc
-RUN yum install -y gcc make rpm-build libtool hwloc-devel \
+RUN yum install -y gcc gcc-c++ make rpm-build libtool hwloc-devel \
       libX11-devel libXt-devel libedit-devel libical-devel \
       ncurses-devel perl postgresql-devel postgresql-contrib python3-devel tcl-devel \
       tk-devel swig expat-devel openssl-devel libXext libXft \
@@ -12,11 +12,7 @@ RUN yum install -y gcc make rpm-build libtool hwloc-devel \
 RUN yum install -y expat libedit postgresql-server postgresql-contrib python3 \
       sendmail sudo tcl tk libical zsh
 
-RUN yum install -y valgrind gdb strace
-RUN chsh -s $(which zsh)
-RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-RUN sed 's/ZSH_THEME="robbyrussell"/ZSH_THEME="agnoster"/g ~/.zshrc > /tmp/out; mv /tmp/out ~/.zshrc
-
+RUN yum install -y valgrind gdb strace which
 
 # install git2
 RUN yum remove git*
@@ -29,6 +25,12 @@ RUN echo ../configure --prefix=/opt/pbs CFLAGS=\"-g -Wall -Werror\" >> /root/.ba
 RUN echo make install >> /root/.bash_history
 RUN echo /opt/pbs/libexec/pbs_postinstall >> /root/.bash_history
 RUN echo chmod 4755 /opt/pbs/sbin/pbs_iff /opt/pbs/sbin/pbs_rcp >> /root/.bash_history
+
+# configure zsh and ohmyzsh
+#RUN chsh -s $(which zsh)
+#RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+#RUN sed 's/ZSH_THEME="robbyrussell"/ZSH_THEME="agnoster"/g ~/.zshrc > /tmp/out; mv /tmp/out ~/.zshrc
+
 
 ENV PATH="/opt/pbs/bin:/opt/pbs/sbin:${PATH}"
 

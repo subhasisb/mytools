@@ -1,16 +1,16 @@
 $configversion 2 
-20b2cb89abd8: sharing = ignore_excl
-20b2cb89abd8: resources_available.ncpus = 0
-20b2cb89abd8: resources_available.mem = 0
-20b2cb89abd8[0]: sharing = default_excl
-20b2cb89abd8[0]: resources_available.ncpus = 8
-20b2cb89abd8[0]: cpus = 0,1,2,3,4,5,6,7
-20b2cb89abd8[0]: resources_available.mem = 16661464kb
-20b2cb89abd8[0]: mems = 0
-20b2cb89abd8[1]: sharing = default_excl
-20b2cb89abd8[1]: resources_available.ncpus = 8
-20b2cb89abd8[1]: cpus = 8,9,10,11,12,13,14,15
-20b2cb89abd8[1]: resources_available.mem = 16777216kb
-20b2cb89abd8[1]: mems = 1
+mom: sharing = ignore_excl
+mom: resources_available.ncpus = 0
+mom: resources_available.mem = 0
+mom[0]: sharing = default_excl
+mom[0]: resources_available.ncpus = 8
+mom[0]: cpus = 0,1,2,3,4,5,6,7
+mom[0]: resources_available.mem = 16661464kb
+mom[0]: mems = 0
+mom[1]: sharing = default_excl
+mom[1]: resources_available.ncpus = 8
+mom[1]: cpus = 8,9,10,11,12,13,14,15
+mom[1]: resources_available.mem = 16777216kb
+mom[1]: mems = 1
 
 

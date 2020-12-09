@@ -4,6 +4,13 @@ else
 	container_name=devenv
 fi
 
+if [ -L ${0} ]; then
+	file=`readlink ${0}`
+	dir=`dirname $file`
+else
+	dir=$PWD
+fi
+
 status=`docker inspect -f '{{.State.Status}}' ${container_name} 2>/dev/null`
 if [ "$status" = "running" ]; then
 	docker exec -it ${container_name} bash
@@ -11,9 +18,9 @@ elif [ "$status" = "exited" ]; then
 	docker start ${container_name}
 	docker exec -it ${container_name} bash
 else
-	docker build -t centos_pbs_devenv:latest .
+	docker build -t centos_pbs_devenv:latest ${dir}
 	echo "Creating container ${container_name}"
-	docker run --name ${container_name} --privileged --hostname=pbs -it -v ~/work:/work:cached -w /work/forks/openpbs --env PS1="\\[\\033[01;31m\\]${container_name}\[\033[00m\]:\[\033[01;32m\]\W\[\033[00m\]\\$ " centos_pbs_devenv bash
+	docker run --name ${container_name} --privileged --hostname=pbs -it -v /pbshome:/pbshome -v ~/work:/work:cached -w /work/forks/openpbs --env PS1="\\[\\033[01;31m\\]${container_name}\[\033[00m\]:\[\033[01;32m\]\W\[\033[00m\]\\$ " centos_pbs_devenv bash
 fi
 
 

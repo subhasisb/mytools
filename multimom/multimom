@@ -121,8 +121,11 @@ do
 		echo "PBS_MOM_SERVICE_PORT=${_port}" >> $conf_file
 		echo "PBS_MANAGER_SERVICE_PORT=`expr ${_port} + 1`" >> $conf_file
 		echo "PBS_HOME=$mom_home" >> $conf_file
+		sed "s/mom/mom-${i}/g" simple_nodedef > out
 		${PBS_EXEC}/bin/qmgr -c "c n mom-${i} mom=${mom_name},port=${_port}"
+		PBS_CONF_FILE=$conf_file ${PBS_EXEC}/sbin/pbs_mom -s insert vnodefile out 
 		PBS_CONF_FILE=$conf_file ${PBS_EXEC}/sbin/pbs_mom -N > /tmp/mom$i.out 2>&1 &
+		sleep 3
 	fi
 	echo ""
 	/opt/pbs/bin/qmgr -c "s n mom-${i} resources_available.ncpus = $cpus"
