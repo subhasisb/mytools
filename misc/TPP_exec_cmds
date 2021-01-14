@@ -1,0 +1,22 @@
+pbs_benchpress -t TestTPP.test_comm_with_vnode_insertion,TestTPP.test_comm_threads,TestTPP.test_comm_with_mom,TestTPP.test_comm_log_events -pmoms=node1:node2 -o /tmp/comm_with_vnode_insertion
+
+pbs_benchpress -t TestTPP.test_client_with_mom -pmoms=node1:node2,client=node3 -o /tmp/TestTPP_client_only.txt
+
+pbs_benchpress -t TestTPP.test_comm_routers_with_hostname,TestTPP.test_comm_routers_with_ipaddress,TestTPP.test_comm_routers_with_ipaddress_hostnames_port,TestTPP.test_comm_routers_with_nondefault_pbs_conf -pmoms=node1:node2:node4, comms=node1:node3:node5 -o /tmp/TestTPP_3moms_3comms.txt
+
+pbs_benchpress -t TestTPP.test_comm_failover,TestTPP.test_comm_failover_with_invalid_values,TestTPP.test_comm_failover_with_ipaddress,TestTPP.test_comm_failover_with_ipaddress_hostnames,TestTPP.test_comm_failover_with_ipaddress_hostnames_port,TestTPP.test_comm_failover_with_nondefault_pbs_conf,TestTPP.test_multiple_comm_with_mom -pmoms=node1:node2,comms=node1:node3 -o /tmp/Execution_logs_TestTPP_2moms_2comms.txt
+
+pbs_benchpress -t TestTPP.test_comm_failover_with_isolated_mom_pools -pmoms=node2:node4:node6:node8,comms=node1:node3:node5:node7:node9 -o /tmp/TestTPP_5comms.txt
+
+pbs_benchpress -t TestTPP.test_isolated_mom_pools -pmoms=node2:node4,comms=node1:node3:node5 -o /tmp/iso_pool2.txt
+
+pbs_benchpress -t test_isolated_mom_pools_when_comm_on_non_serverhost  -pmoms=node2:node4,comms=node3:node5:node6 -o /tmp/TestTPP_3rdfromlast.txt
+
+
+pbs_benchpress -t TestTPP.test_comm_non_server_host -pmoms=node1:node3,comms=node4,client=node2 -o /tmp/TestTPP_nonserver.txt
+
+pbs_benchpress -t TestTPP.test_mom_non_server_host -pmoms=node2:node3,comms=node1 -o /tmp/TestTPP_mom_nonserver2.txt
+
+ 
+
+
