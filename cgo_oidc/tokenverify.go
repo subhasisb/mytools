@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
+	"context"
 	oidc "github.com/coreos/go-oidc"
-	"golang.org/x/net/context"
 )
 
 var (
