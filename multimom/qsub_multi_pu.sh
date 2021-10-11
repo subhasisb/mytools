@@ -1,31 +1,28 @@
 #!/bin/bash
 
 if [ $# -lt 3 ]; then
-	echo "syntax: $0 <num-threads> <jobs-per-thread> <server-port-range>"
-	exit 1
+        echo "syntax: $0 <num-threads> <jobs-per-thread> <server-port-range>"
+        exit 1
 fi
 
 function submit_jobs {
-	port=$1
-	njobs=$2
-	inst=$3
+        port=$1
+        njobs=$2
 
-	export PBS_SERVER_INSTANCES=:$port
-	export CLI_INST=$inst
-	echo "New thread submitting to Port = $port, jobs=$njobs, qsub_inst=$inst"
+        export PBS_SERVER_INSTANCES=:$port
+        echo "New thread submitting to Port = $port, jobs=$njobs, user=$(whoami)"
 
-	for i in $(seq 1 $njobs)
-	do
-		qsub -koe -- /bin/date > /dev/null
-	done
+        for i in $(seq 1 $njobs)
+        do
+                qsub -koe -- /bin/date > /dev/null
+        done
 }
 
 if [ "$1" = "submit" ]; then
-	port=$2
-	njobs=$3
-	inst=$4
-	submit_jobs $port $njobs $inst
-	exit 0
+        port=$2
+        njobs=$3
+        submit_jobs $port $njobs
+        exit 0
 fi
 
 nthreads=$1
@@ -37,17 +34,21 @@ echo "parameters supplied: nthreads=$nthreads, njobs=$njobs, port_start=$port_st
 
 #assign each new thread a new port in a round robin fashion to distribute almost evenly
 #qsub background daemons will be created for each different server port, so connections would be persistent
-
+userN=1
 start_time=`date +%s%3N`
 
 port=$port_start
 for i in $(seq 1 $nthreads)
 do
-	setsid $0 submit $port $njobs $i &
-	port=$((port + 1))
-	if [ $port -gt $port_end ]; then
-		port=$port_start
+        setsid sudo -Hiu pbsuser${userN} $0 submit $port $njobs &
+        port=$((port + 1))
+	userN=$(( userN + 1))
+	if [ ${userN} -gt 100 ]; then
+		userN=1
 	fi
+        if [ $port -gt $port_end ]; then
+                port=$port_start
+        fi
 done
 
 wait
