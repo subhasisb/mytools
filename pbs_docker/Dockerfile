@@ -26,11 +26,6 @@ RUN echo make install >> /root/.bash_history
 RUN echo /opt/pbs/libexec/pbs_postinstall >> /root/.bash_history
 RUN echo chmod 4755 /opt/pbs/sbin/pbs_iff /opt/pbs/sbin/pbs_rcp >> /root/.bash_history
 
-# configure zsh and ohmyzsh
-#RUN chsh -s $(which zsh)
-#RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-#RUN sed 's/ZSH_THEME="robbyrussell"/ZSH_THEME="agnoster"/g ~/.zshrc > /tmp/out; mv /tmp/out ~/.zshrc
-
-
 ENV PATH="/opt/pbs/bin:/opt/pbs/sbin:${PATH}"
+ENV PYTHONPATH=/opt/pbs/lib/
 

@@ -1,0 +1,57 @@
+version: '3.3'
+x-common: &common
+  domainname: 'dev.local'
+  privileged: true
+  stdin_open: true
+  tty: true
+  image: pbs_test_u20
+  entrypoint: /container-entrypoint
+  dns_search: 'dev.local'
+  volumes:
+    - /home/subhas/work:/work
+  networks:
+    - 'dev.local'
+services:
+  node1:
+    <<: *common
+    hostname: node1
+    container_name: node1
+  node2:
+    <<: *common
+    hostname: node2
+    container_name: node2
+  node3:
+    <<: *common
+    hostname: node3
+    container_name: node3
+  node4:
+    <<: *common
+    hostname: node4
+    container_name: node4
+  node5:
+    <<: *common
+    hostname: node5
+    container_name: node5
+  node6:
+    <<: *common
+    hostname: node6
+    container_name: node6
+  node7:
+    <<: *common
+    hostname: node7
+    container_name: node7
+  node8:
+    <<: *common
+    hostname: node8
+    container_name: node8
+  node9:
+    <<: *common
+    hostname: node9
+    container_name: node9
+networks:
+  'dev.local':
+    name: 'dev.local'
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.18.0.0/16

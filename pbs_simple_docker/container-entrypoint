@@ -1,0 +1,31 @@
+#!/bin/bash
+
+/opt/pbs/libexec/pbs_postinstall > out 2>&1
+/opt/pbs/libexec/pbs_habitat >> out 2>&1
+mkdir /var/spool/pbs/certs \
+      && cp /root/certs/pbspro.cert.pem /var/spool/pbs/certs/cert.pem \
+      && cp /root/certs/pbspro.key.pem /var/spool/pbs/certs/key.pem \
+      && chmod -R 0600 /var/spool/pbs/certs \
+      && chown -R root: /var/spool/pbs/certs \
+      && cp /root/certs/ca.cert.pem /etc/pbs_ca.pem \
+      && chmod -R 0644 /etc/pbs_ca.pem \
+      && chown -R root: /etc/pbs_ca.pem \
+      && echo "PBS_ENCRYPT_METHOD=tls" >> /etc/pbs.conf
+
+mv /opt/pbs/sbin/pbs_comm /opt/pbs/sbin/pbs_comm.vlgd
+cat <<EOT >> /opt/pbs/sbin/pbs_comm
+#!/bin/bash
+if [ "$1" == "--version" ]; then
+        /opt/pbs/sbin/pbs_comm.vlgd --version
+else
+        setsid valgrind --tool=memcheck --leak-check=full --track-origins=no --child-silent-after-fork=yes --redzone-size=256 --track-fds=yes --log-file=/tmp/pbs_comm_${HOSTNAME}_$(date "+%s").log --xml=no --vgdb=no /opt/pbs/sbin/pbs_comm.vlgd -N "$@" &
+        sleep 5
+fi
+EOT
+chmod +x /opt/pbs/sbin/pbs_comm
+
+if [ $# -ne 0 ]; then
+	exec "$@"
+else
+      exec /bin/bash
+fi
