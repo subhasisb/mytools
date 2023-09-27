@@ -10,7 +10,7 @@ metadata:
   labels:
     name: pbs-server
 spec:
-  clusterIP: None
+  type: LoadBalancer
   ports:
   - name: comm-port
     port: 17001 
@@ -40,8 +40,6 @@ spec:
       labels:
         name: pbs-server
         app: wlm
-      annotations:
-        pod.beta.kubernetes.io/hostname: pbs-server-svc
     spec:
       containers:
       - name: pbs-server
@@ -64,9 +62,9 @@ spec:
             nohup /usr/sbin/sshd -D  &
             sleep 10
 
-            hostnamectl set-hostname pbs-server-svc
+            hostname pbs-server-svc
 
-            sed -i "s/PBS_SERVER=.*/PBS_SERVER=pbs-server-svc/g" /etc/pbs.conf
+            sed -i "s/PBS_SERVER=.*/PBS_SERVER=$HOSTNAME/g" /etc/pbs.conf
             useradd pbsdata -m
 
             echo 'PBS_SUPPORTED_AUTH_METHODS=MUNGE' >> /etc/pbs.conf
@@ -74,6 +72,7 @@ spec:
             echo 'PBS_LOG_HIGHRES_TIMESTAMP=1' >> /etc/pbs.conf
             echo 'PBS_LOG_EVENTS=2047' >> /etc/pbs.conf
             echo 'PBS_COMM_LOG_EVENTS=2047' >> /etc/pbs.conf
+            echo 'PBS_LEAF_NAME=pbs-server-svc' >> /etc/pbs.conf
 
             echo LD_LIBRARY_PATH=/usr/lib:/lib64:/opt/pbs/lib >> /var/spool/pbs/pbs_environment
             export LD_LIBRARY_PATH=/usr/lib:/lib64:/opt/pbs/lib
