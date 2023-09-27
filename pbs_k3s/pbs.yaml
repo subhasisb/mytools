@@ -40,6 +40,8 @@ spec:
       labels:
         name: pbs-server
         app: wlm
+      annotations:
+        pod.beta.kubernetes.io/hostname: pbs-server-svc
     spec:
       containers:
       - name: pbs-server
@@ -53,13 +55,16 @@ spec:
         command: ["/bin/bash","-c"]
         args:
           - |
-            ulimit -n 1024
+            ulimit -n 4096
 
             ln -s /usr/lib64/libmunge.so.2 /lib/libmunge.so
             sudo -u munge "/usr/sbin/munged"
 
             #start ssh server
-            service ssh start
+            nohup /usr/sbin/sshd -D  &
+            sleep 10
+
+            hostnamectl set-hostname pbs-server-svc
 
             sed -i "s/PBS_SERVER=.*/PBS_SERVER=pbs-server-svc/g" /etc/pbs.conf
             useradd pbsdata -m
@@ -112,13 +117,15 @@ spec:
         command: ["/bin/bash","-c"]
         args:
           - |
-            ulimit -n 1024
+            ulimit -n 4096
   
             ln -s  /usr/lib64/libmunge.so.2 /lib/libmunge.so
             sudo -u munge "/usr/sbin/munged"
 
-            #start ssh mom
-            service ssh start
+            #start ssh server
+            nohup /usr/sbin/sshd -D  &
+            sleep 10
+
 
             sed -i "s/PBS_SERVER=.*/PBS_SERVER=pbs-server-svc/g" /etc/pbs.conf
             sed -i "s/PBS_START_SERVER=.*/PBS_START_SERVER=0/g" /etc/pbs.conf
@@ -133,6 +140,8 @@ spec:
             export LD_LIBRARY_PATH=/usr/lib:/lib64:/opt/pbs/lib
 
             /etc/init.d/pbs start
+
+            /opt/pbs/bin/qmgr -c "s s pbs_license_info=6200@trlicsrv03.prog.altair.com"
 
             #wait for exit signals
             exec /bin/bash -c "trap : EXIT ; sleep infinity & wait"
