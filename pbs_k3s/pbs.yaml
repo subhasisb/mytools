@@ -10,7 +10,7 @@ metadata:
   labels:
     name: pbs-server
 spec:
-  type: LoadBalancer
+  clusterIP: None  
   ports:
   - name: comm-port
     port: 17001 
