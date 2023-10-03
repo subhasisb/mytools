@@ -1,0 +1,77 @@
+#!/bin/bash
+
+
+servers=`kubectl get pods -o wide | grep "pbs-server" | awk '{print $1","$6}'`
+moms=`kubectl get pods -o wide | grep "pbs-mom-" | awk '{print $1","$6}'`
+
+svrcount=`kubectl get pods -o wide | grep "pbs-server" | wc -l`
+momcount=`kubectl get pods -o wide | grep "pbs-mom-" | wc -l`
+moms_per_server=`expr $momcount / $svrcount`
+
+echo "Servers=$svrcount, Moms=$momcount, moms/server=$moms_per_server"
+
+> /tmp/server_hosts
+> /tmp/momconfig
+
+i=1
+svr_num=1
+
+serverline=`echo $servers | awk '{print $'$svr_num'}'`
+server=`echo $serverline | awk -F"," '{print $1}'`
+serverip=`echo $serverline | awk -F"," '{print $2}'`
+momlist=""
+
+update_hosts() {
+	kubectl cp /tmp/server_hosts ${server}:/tmp/server_hosts
+	kubectl exec ${server}  -- bash -c "cat /tmp/server_hosts >> /etc/hosts"
+
+	echo "${serverip} ${server} ${server}.pbs-server.default.svc.cluster.local" >> /tmp/server_hosts
+
+	i=1
+	#also add the same name resolution to each of the moms
+	for mom in $momlist
+	do
+		kubectl cp /tmp/server_hosts ${mom}:/tmp/server_hosts
+		kubectl exec ${mom} -- bash -c "cat /tmp/server_hosts >> /etc/hosts"
+
+		kubectl cp /tmp/momconfig ${mom}:/tmp/momconfig
+		kubectl exec ${mom} -- bash -c "cat /tmp/momconfig >> /var/spool/pbs/mom_priv/config"
+
+		kubectl exec ${mom} -- bash -c "pkill -9 pbs_mom; pbs_mom"
+
+		i=`expr $i + 1`
+	done
+
+	> /tmp/server_hosts
+	> /tmp/momconfig
+
+	momlist=""
+}
+
+for momline in $moms
+do
+	if [ $i -gt $moms_per_server ]; then
+		# before switching server add the ipadds to server hosts
+		update_hosts
+
+		# switch to next server
+		svr_num=`expr $svr_num + 1`
+		serverline=`echo $servers | awk '{print $'$svr_num'}'`
+		server=`echo $serverline | awk -F"," '{print $1}'`
+		serverip=`echo $serverline | awk -F"," '{print $2}'`
+		i=1
+	fi
+	mom=`echo $momline | awk -F"," '{print $1}'`
+	momip=`echo $momline | awk -F"," '{print $2}'`
+	momlist="${momlist} ${mom}"
+
+	echo "Added mom${i}=$mom to server ${server}"
+	echo "$momip mom${i}" >> /tmp/server_hosts
+	echo "\$clienthost mom${i}" >> /tmp/momconfig
+
+	i=`expr $i + 1`
+done
+
+#for the last server do the copy
+update_hosts
+

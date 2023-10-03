@@ -10,7 +10,7 @@ metadata:
   labels:
     name: pbs-server
 spec:
-  clusterIP: None  
+  type: LoadBalancer  
   ports:
   - name: comm-port
     port: 17001 
@@ -26,7 +26,7 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: kube-mde-pbs-server
+  name: pbs-server
   labels:
     name: pbs-server
 spec:
@@ -62,8 +62,6 @@ spec:
             nohup /usr/sbin/sshd -D  &
             sleep 10
 
-            hostname pbs-server-svc
-
             sed -i "s/PBS_SERVER=.*/PBS_SERVER=$HOSTNAME/g" /etc/pbs.conf
             useradd pbsdata -m
 
@@ -72,7 +70,6 @@ spec:
             echo 'PBS_LOG_HIGHRES_TIMESTAMP=1' >> /etc/pbs.conf
             echo 'PBS_LOG_EVENTS=2047' >> /etc/pbs.conf
             echo 'PBS_COMM_LOG_EVENTS=2047' >> /etc/pbs.conf
-            echo 'PBS_LEAF_NAME=pbs-server-svc' >> /etc/pbs.conf
 
             echo LD_LIBRARY_PATH=/usr/lib:/lib64:/opt/pbs/lib >> /var/spool/pbs/pbs_environment
             export LD_LIBRARY_PATH=/usr/lib:/lib64:/opt/pbs/lib
@@ -80,6 +77,8 @@ spec:
             /etc/init.d/pbs start
 
             /opt/pbs/bin/qmgr -c "s s auto_create_node_enable=1"
+            /opt/pbs/bin/qmgr -c "s s acl_roots=root"
+            /opt/pbs/bin/qmgr -c "s s pbs_license_info=6200@trlicsrv03.prog.altair.com"
 
             #wait for exit signals
             exec /bin/bash -c "trap : EXIT ; sleep infinity & wait"
@@ -90,11 +89,11 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: kube-mde-pbs-mom
+  name: pbs-mom
   labels:
     name: pbs-mom
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       name: pbs-mom
@@ -126,7 +125,7 @@ spec:
             sleep 10
 
 
-            sed -i "s/PBS_SERVER=.*/PBS_SERVER=pbs-server-svc/g" /etc/pbs.conf
+            sed -i "s/PBS_SERVER=.*/PBS_SERVER=pbs-server-0/g" /etc/pbs.conf
             sed -i "s/PBS_START_SERVER=.*/PBS_START_SERVER=0/g" /etc/pbs.conf
             sed -i "s/PBS_START_SCHED=.*/PBS_START_SCHED=0/g" /etc/pbs.conf
             sed -i "s/PBS_START_COMM=.*/PBS_START_COMM=0/g" /etc/pbs.conf
@@ -139,8 +138,6 @@ spec:
             export LD_LIBRARY_PATH=/usr/lib:/lib64:/opt/pbs/lib
 
             /etc/init.d/pbs start
-
-            /opt/pbs/bin/qmgr -c "s s pbs_license_info=6200@trlicsrv03.prog.altair.com"
 
             #wait for exit signals
             exec /bin/bash -c "trap : EXIT ; sleep infinity & wait"

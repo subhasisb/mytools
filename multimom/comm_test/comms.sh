@@ -32,7 +32,7 @@ do
 
 	if [ "$oper" == "create" -o "$oper" == "restart" ]; then
 		if [ -f /etc/pbscomm_$port.conf ]; then	
-			PBS_CONF_FILE=/etc/pbscomm_$port.conf /etc/init.d/pbs restart
+			PBS_CONF_FILE=/etc/pbscomm_$port.conf /etc/init.d/pbs restart 
 		fi
 	elif [ "$oper" == "remove" ]; then
 		if [ -f /etc/pbscomm_$port.conf ]; then	
