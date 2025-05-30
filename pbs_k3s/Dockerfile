@@ -4,28 +4,23 @@
 # Contains trade secret, proprietary, and confidential Information.
 
 ARG REGISTRY=docker.io
-FROM centos:8 AS pbsimage
-#FROM iad.ocir.io/idt7ybnr03cb/objectstore_faas_templates:python-faas-templatev10.5 AS pbsmom
+FROM ubuntu:latest AS pbsimage
 USER root
 LABEL maintainer="Altair Engineering"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* \
-    && sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
-
-RUN yum update  -y \
-    && yum install -y expat libedit postgresql-server postgresql-contrib python3 sendmail sudo tcl tk libical numactl-devel openssh-server munge
+RUN apt-get update -y \
+    && apt install -y expat libedit2 libedit-dev postgresql python3 sendmail sudo tcl tk libical3 libnuma-dev openssh-server libmunge-dev libmunge2 munge
 
 # copy PBS rpm
-COPY ./pbspro-*.rpm ./pbspro.rpm
+COPY ./pbspro*.deb ./pbspro.deb
+RUN ls -l 
 
-RUN yum install -y ./pbspro.rpm
+RUN apt install -y ./pbspro.deb
 
 ENV LD_LIBRARY_PATH=/usr/lib:/lib64:/usr/local/lib:/opt/pbs/lib
 ENV PATH=/opt/pbs/bin:/opt/pbs/sbin:/opt/ptl/bin:/opt/lqs/bin:$PATH
-
-RUN create-munge-key
 
 RUN set -ex \
       && groupadd -g 1900 tstgrp00 \
@@ -61,6 +56,7 @@ RUN set -ex \
       && useradd  -m -s /bin/bash -u 2000 -g demogroup -G demogroup demouser \
       && chmod g+x,o+x /home/* \
       && echo 'root:pbs' | chpasswd  \
+      && rm -rf ~/.ssh \
       && ssh-keygen -t rsa -C root-ssh-keypair -N "" -f ~/.ssh/id_rsa \
       && cp ~/.ssh/id_rsa.pub ~/.ssh/authorized_keys \
       && chmod 0600 ~/.ssh/authorized_keys \
@@ -76,4 +72,10 @@ RUN set -ex \
       && echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config \
       && echo '  IdentityFile ~/.ssh/id_rsa' >> /etc/ssh/ssh_config \
       && echo '  PreferredAuthentications publickey,password' >> /etc/ssh/ssh_config \
+      && rm -rf /etc/ssh/ssh_host_rsa_key \
       && ssh-keygen -t rsa -b 4096 -N "" -f /etc/ssh/ssh_host_rsa_key
+
+RUN   chown -R root:root /var/lib/munge /etc/munge /var/log/munge \
+      && ln -s /usr/lib/x86_64-linux-gnu/libmunge.so.2 /usr/lib/libmunge.so \
+      && mkdir -p /run/munge
+

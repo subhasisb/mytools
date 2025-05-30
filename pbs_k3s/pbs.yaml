@@ -43,7 +43,7 @@ spec:
     spec:
       containers:
       - name: pbs-server
-        image: pbsimage
+        image: docker.io/pbsimage:latest
         imagePullPolicy: IfNotPresent
         resources:
           requests:
@@ -55,8 +55,7 @@ spec:
           - |
             ulimit -n 4096
 
-            ln -s /usr/lib64/libmunge.so.2 /lib/libmunge.so
-            sudo -u munge "/usr/sbin/munged"
+            munged
 
             #start ssh server
             nohup /usr/sbin/sshd -D  &
@@ -105,7 +104,7 @@ spec:
     spec:
       containers:
       - name: pbs-mom
-        image: pbsimage
+        image: docker.io/pbsimage:latest
         imagePullPolicy: IfNotPresent
         resources:
           requests:
@@ -117,8 +116,7 @@ spec:
           - |
             ulimit -n 4096
   
-            ln -s  /usr/lib64/libmunge.so.2 /lib/libmunge.so
-            sudo -u munge "/usr/sbin/munged"
+            munged
 
             #start ssh server
             nohup /usr/sbin/sshd -D  &
