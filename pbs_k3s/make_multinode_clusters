@@ -48,6 +48,8 @@ update_hosts() {
 	momlist=""
 }
 
+
+i=0
 for momline in $moms
 do
 	if [ $i -gt $moms_per_server ]; then

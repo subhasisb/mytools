@@ -3,6 +3,10 @@
 # Copyright notice does not imply publication.
 # Contains trade secret, proprietary, and confidential Information.
 
+# copy the pbspro-server and pbspro-debug deb files to the current directory
+# run using the following command from the current folder
+# docker build . --build-context pbsprosrc=/home/subhas/work/forks/pbspro -t pbsimage:latest
+
 ARG REGISTRY=docker.io
 FROM ubuntu:latest AS pbsimage
 USER root
@@ -11,16 +15,19 @@ LABEL maintainer="Altair Engineering"
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update -y \
-    && apt install -y expat libedit2 libedit-dev postgresql python3 sendmail sudo tcl tk libical3 libnuma-dev openssh-server libmunge-dev libmunge2 munge
+    && apt install -y expat libedit2 libedit-dev postgresql python3 sendmail sudo tcl tk libical3 libnuma-dev openssh-server libmunge-dev libmunge2 munge vim gdb iputils-ping strace
 
 # copy PBS rpm
-COPY ./pbspro*.deb ./pbspro.deb
+COPY ./pbspro*.deb /
 RUN ls -l 
 
-RUN apt install -y ./pbspro.deb
+RUN apt install -y ./pbspro*.deb
 
 ENV LD_LIBRARY_PATH=/usr/lib:/lib64:/usr/local/lib:/opt/pbs/lib
 ENV PATH=/opt/pbs/bin:/opt/pbs/sbin:/opt/ptl/bin:/opt/lqs/bin:$PATH
+
+RUN mkdir -p /home/subhas/work/forks/pbspro
+COPY --from=pbsprosrc . /home/subhas/work/forks/pbspro/
 
 RUN set -ex \
       && groupadd -g 1900 tstgrp00 \

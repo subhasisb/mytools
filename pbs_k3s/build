@@ -1,0 +1,41 @@
+#!/bin/bash
+
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+kubectl delete sts pbs-mom pbs-server
+sleep 5
+
+#check if pbs deb files are present
+files=$(ls -l pbspro*.deb | wc  -l)
+if [ $files -lt 2 ]; then
+	echo "PBS deb files not present"
+	exit 1
+fi
+
+docker build . --build-context pbsprosrc=/home/subhas/work/forks/pbspro -t pbsimage:latest
+if [ $? -ne 0 ]; then
+	echo "Docker build failed"
+	exit 1
+fi
+echo "Docker build success"
+
+docker save pbsimage -o pbsimage.tar
+if [ $? -ne 0 ]; then
+	echo "Docker save failed"
+	exit 1
+fi
+echo "Docker save success"
+
+k3s ctr images import pbsimage.tar
+if [ $? -ne 0 ]; then
+	echo "ctr import failed"
+	exit 1
+fi
+echo "ctr import success"
+
+kubectl apply -f pbs.yaml
+echo " pbs deploy success"
+
+sleep 15
+./make_multinode_clusters
+echo "PBS cluster ready!!"
+
