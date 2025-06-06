@@ -21,13 +21,13 @@ RUN apt-get update -y \
 COPY ./pbspro*.deb /
 RUN ls -l 
 
+RUN mkdir -p /home/subhas/work/forks/pbspro
+COPY --from=pbsprosrc . /home/subhas/work/forks/pbspro/
+
 RUN apt install -y ./pbspro*.deb
 
 ENV LD_LIBRARY_PATH=/usr/lib:/lib64:/usr/local/lib:/opt/pbs/lib
 ENV PATH=/opt/pbs/bin:/opt/pbs/sbin:/opt/ptl/bin:/opt/lqs/bin:$PATH
-
-RUN mkdir -p /home/subhas/work/forks/pbspro
-COPY --from=pbsprosrc . /home/subhas/work/forks/pbspro/
 
 RUN set -ex \
       && groupadd -g 1900 tstgrp00 \
@@ -85,4 +85,9 @@ RUN set -ex \
 RUN   chown -R root:root /var/lib/munge /etc/munge /var/log/munge \
       && ln -s /usr/lib/x86_64-linux-gnu/libmunge.so.2 /usr/lib/libmunge.so \
       && mkdir -p /run/munge
+
+# copy over updated PBS binaries like server, mom, comm
+# add code here to copy over other binaries if necessary
+COPY ./pbs /opt/pbs
+
 
