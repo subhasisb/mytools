@@ -124,7 +124,7 @@ spec:
             sed -i "s/PBS_SERVER=.*/PBS_SERVER=pbs-server-0/g" /etc/pbs.conf
             sed -i "s/PBS_START_SERVER=.*/PBS_START_SERVER=0/g" /etc/pbs.conf
             sed -i "s/PBS_START_SCHED=.*/PBS_START_SCHED=0/g" /etc/pbs.conf
-            sed -i "s/PBS_START_COMM=.*/PBS_START_COMM=0/g" /etc/pbs.conf
+            sed -i "s/PBS_START_COMM=.*/PBS_START_COMM=1/g" /etc/pbs.conf
             sed -i "s/PBS_START_MOM=.*/PBS_START_MOM=1/g" /etc/pbs.conf
             echo 'PBS_SUPPORTED_AUTH_METHODS=MUNGE' >> /etc/pbs.conf
             echo 'PBS_AUTH_METHOD=MUNGE' >> /etc/pbs.conf

@@ -20,12 +20,14 @@ serverline=`echo $servers | awk '{print $'$svr_num'}'`
 server=`echo $serverline | awk -F"," '{print $1}'`
 serverip=`echo $serverline | awk -F"," '{print $2}'`
 momlist=""
+commlist=""
 
 update_hosts() {
 	kubectl cp /tmp/server_hosts ${server}:/tmp/server_hosts
 	kubectl exec ${server}  -- bash -c "cat /tmp/server_hosts >> /etc/hosts"
 
 	echo "${serverip} ${server} ${server}.pbs-server.default.svc.cluster.local" >> /tmp/server_hosts
+	commlist="$server"
 
 	i=1
 	#also add the same name resolution to each of the moms
@@ -37,7 +39,15 @@ update_hosts() {
 		kubectl cp /tmp/momconfig ${mom}:/tmp/momconfig
 		kubectl exec ${mom} -- bash -c "cat /tmp/momconfig >> /var/spool/pbs/mom_priv/config"
 
-		kubectl exec ${mom} -- bash -c "pkill -9 pbs_mom; pbs_mom"
+		# update comm config to point to previous comms
+		kubectl exec ${mom} -- bash -c "echo PBS_COMM_ROUTERS=$commlist >> /etc/pbs.conf"
+
+		# update mom to point to local comm
+		kubectl exec ${mom} -- bash -c "echo PBS_LEAF_ROUTERS=$mom >> /etc/pbs.conf"
+
+		kubectl exec ${mom} -- bash -c "pkill -9 pbs_comm; pbs_comm; pkill -9 pbs_mom; pbs_mom"
+
+		commlist="$commlist,$mom"
 
 		i=`expr $i + 1`
 	done
@@ -54,6 +64,7 @@ for momline in $moms
 do
 	if [ $i -gt $moms_per_server ]; then
 		# before switching server add the ipadds to server hosts
+		commlist=""
 		update_hosts
 
 		# switch to next server
@@ -67,9 +78,9 @@ do
 	momip=`echo $momline | awk -F"," '{print $2}'`
 	momlist="${momlist} ${mom}"
 
-	echo "Added mom${i}=$mom to server ${server}"
-	echo "$momip mom${i}" >> /tmp/server_hosts
-	echo "\$clienthost mom${i}" >> /tmp/momconfig
+	echo "Added $mom to server ${server}"
+	echo "$momip $mom" >> /tmp/server_hosts
+	echo "\$clienthost $mom" >> /tmp/momconfig
 
 	i=`expr $i + 1`
 done
