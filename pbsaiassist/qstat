@@ -1,0 +1,22 @@
+#!/bin/bash
+
+#if a single jobid argument is provided along with -A then only intervene
+if [ $# -eq 2 ] && [ "$1" == "-A" ]; then
+    jobid=$2
+else
+    /opt/pbs/bin/qstat $*
+    exit 0
+fi
+
+output=$(/opt/pbs/bin/qstat -fx $jobid 2>&1)
+#now check the output for exit_status and if it is 0 then nothing else needs to be done
+echo "$output" | grep -q "Exit_status = 0"
+if [ $? -eq 0 ]; then
+    echo "Job $jobid completed successfully. No analysis needed."
+    exit 0
+fi
+
+echo "PBS AI job failure analysis: "
+/home/subhas/anaconda3/envs/myenv/bin/python /home/subhas/work/mytools/pbsaiassist/pbs_ai_assist.py $jobid $PWD/tst.sh $PWD/tst.sh.o$jobid $PWD/tst.sh.e$jobid
+
+exit 0
