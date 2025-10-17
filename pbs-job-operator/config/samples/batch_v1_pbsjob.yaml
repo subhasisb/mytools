@@ -1,0 +1,24 @@
+apiVersion: batch.example.com/v1
+kind: PBSJob
+metadata:
+  labels:
+    app.kubernetes.io/name: pbsjob-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: pbsjob-sample
+spec:
+  script: |
+    #!/bin/bash
+    #PBS -N sample-job
+    #PBS -l walltime=00:10:00
+    #PBS -o /tmp/sample-job.out
+    #PBS -e /tmp/sample-job.err
+
+    echo "Starting PBS job at $(date)"
+    echo "Running on node: $(hostname)"
+    sleep 60
+    echo "Job completed at $(date)"
+  jobName: "sample-job"
+  queue: "workq"
+  walltime: "00:10:00"
+  outputPath: "/tmp/sample-job.out"
+  errorPath: "/tmp/sample-job.err"

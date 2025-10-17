@@ -1,0 +1,211 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pbs-job-operator-system
+  labels:
+    control-plane: controller-manager
+    app.kubernetes.io/name: pbs-job-operator
+    app.kubernetes.io/managed-by: kustomize
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: controller-manager
+  namespace: pbs-job-operator-system
+  labels:
+    app.kubernetes.io/name: pbs-job-operator
+    app.kubernetes.io/managed-by: kustomize
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pbs-job-operator-manager-role
+  labels:
+    app.kubernetes.io/name: pbs-job-operator
+    app.kubernetes.io/managed-by: kustomize
+rules:
+- apiGroups:
+  - batch.example.com
+  resources:
+  - pbsjobs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - batch.example.com
+  resources:
+  - pbsjobs/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - batch.example.com
+  resources:
+  - pbsjobs/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pbs-job-operator-manager-rolebinding
+  labels:
+    app.kubernetes.io/name: pbs-job-operator
+    app.kubernetes.io/managed-by: kustomize
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pbs-job-operator-manager-role
+subjects:
+- kind: ServiceAccount
+  name: controller-manager
+  namespace: pbs-job-operator-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pbs-job-operator-leader-election-role
+  namespace: pbs-job-operator-system
+  labels:
+    app.kubernetes.io/name: pbs-job-operator
+    app.kubernetes.io/managed-by: kustomize
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pbs-job-operator-leader-election-rolebinding
+  namespace: pbs-job-operator-system
+  labels:
+    app.kubernetes.io/name: pbs-job-operator
+    app.kubernetes.io/managed-by: kustomize
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pbs-job-operator-leader-election-role
+subjects:
+- kind: ServiceAccount
+  name: controller-manager
+  namespace: pbs-job-operator-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller-manager
+  namespace: pbs-job-operator-system
+  labels:
+    control-plane: controller-manager
+    app.kubernetes.io/name: pbs-job-operator
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+      app.kubernetes.io/name: pbs-job-operator
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+      labels:
+        control-plane: controller-manager
+        app.kubernetes.io/name: pbs-job-operator
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - command:
+        - /manager
+        args:
+          - --leader-elect
+          - --health-probe-bind-address=:8081
+        image: subhasisb1974/controller:latest
+        name: manager
+        ports: []
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - "ALL"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 128Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi
+        volumeMounts:
+        - name: pbs-conf
+          mountPath: /etc/pbs.conf
+          readOnly: true
+        - name: pbs-opt
+          mountPath: /opt/pbs
+          readOnly: true
+        - name: pbs-spool
+          mountPath: /var/spool/pbs
+      volumes:
+      - name: pbs-conf
+        hostPath:
+          path: /etc/pbs.conf
+          type: File
+      - name: pbs-opt
+        hostPath:
+          path: /opt/pbs
+          type: Directory
+      - name: pbs-spool
+        hostPath:
+          path: /var/spool/pbs
+          type: Directory
+      serviceAccountName: controller-manager
+      terminationGracePeriodSeconds: 10

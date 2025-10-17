@@ -35,7 +35,7 @@ def analyze_job_failure(job_id: str, job_script_path: str, stdout_path: str, std
     """
 
     # Create the LLM instance
-    llm = ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.0)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
 
     # Define the tools available to the agent
     tools = [read_file]

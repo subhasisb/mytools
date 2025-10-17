@@ -16,7 +16,10 @@ if [ $? -eq 0 ]; then
     exit 0
 fi
 
+#find the job script from the output
+job_script=$(echo "$output" | grep "Submit_arguments =" | awk -F'= ' '{print $2}')
+
 echo "PBS AI job failure analysis: "
-/home/subhas/anaconda3/envs/myenv/bin/python /home/subhas/work/mytools/pbsaiassist/pbs_ai_assist.py $jobid $PWD/tst.sh $PWD/tst.sh.o$jobid $PWD/tst.sh.e$jobid
+/home/subhas/anaconda3/envs/myenv/bin/python /home/subhas/work/mytools/pbsaiassist/pbs_ai_assist.py $jobid $PWD/$job_script $PWD/$job_script.o$jobid $PWD/$job_script.e$jobid
 
 exit 0
